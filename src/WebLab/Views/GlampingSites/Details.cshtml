@@ -1,0 +1,176 @@
+@model WebLab.Models.GlampingSite
+
+@{
+    ViewData["Title"] = Model.Name;
+}
+
+<div class="mb-3">
+    <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i>Назад до каталогу
+    </a>
+</div>
+
+<div class="card shadow border-0 overflow-hidden mb-4">
+    <div class="position-relative" style="max-height: 450px; background-color: #212529;">
+        @if (!string.IsNullOrEmpty(Model.ImageUrl))
+        {
+            <img src="@Model.ImageUrl" class="w-100 object-fit-cover" style="max-height: 450px;" alt="@Model.Name" />
+        }
+        else
+        {
+            <div class="py-5 text-center text-white-50">
+                <i class="bi bi-image display-1"></i>
+            </div>
+        }
+        <div class="position-absolute bottom-0 start-0 end-0 p-4 text-white" style="background: linear-gradient(transparent, rgba(0,0,0,0.85));">
+            <span class="badge bg-success mb-2 fs-6">
+                <i class="bi bi-geo-alt me-1"></i>@Model.Region?.Name
+            </span>
+            <h1 class="display-5 fw-bold mb-1">@Model.Name</h1>
+            <p class="mb-0 text-white-50"><i class="bi bi-pin-map-fill text-danger me-1"></i>@Model.Address</p>
+        </div>
+    </div>
+
+    <div class="card-body p-4">
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <h4 class="fw-bold mb-3">Про локацію</h4>
+                <p class="fs-5 text-secondary lead" style="white-space: pre-line;">@Model.Description</p>
+
+                <h5 class="fw-bold mt-4 mb-3">Зручності та активності</h5>
+                @if (Model.GlampingActivities.Any())
+                {
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var ga in Model.GlampingActivities)
+                        {
+                            <span class="badge bg-light text-dark border p-2 fs-6">
+                                <i class="bi @ga.Activity?.IconClass text-success me-1"></i>@ga.Activity?.Name
+                            </span>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted">Активностей не зазначено.</p>
+                }
+
+                @if (!string.IsNullOrEmpty(Model.DocumentUrl))
+                {
+                    <div class="alert alert-info border-0 d-flex align-items-center justify-content-between mt-4 p-3 shadow-sm">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-file-earmark-pdf-fill fs-2 text-danger me-3"></i>
+                            <div>
+                                <h6 class="mb-0 fw-bold">Офіційні правила перебування та буклет</h6>
+                                <small class="text-muted">Документ локації, доступний для завантаження</small>
+                            </div>
+                        </div>
+                        <a href="@Model.DocumentUrl" target="_blank" class="btn btn-primary btn-sm px-3">
+                            <i class="bi bi-download me-1"></i>Завантажити файл
+                        </a>
+                    </div>
+                }
+
+                <div class="mt-5 pt-3 border-top">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4 class="fw-bold mb-0">
+                            Відгуки гостей 
+                            <span class="badge bg-secondary fs-6">@Model.Reviews.Count</span>
+                        </h4>
+                    </div>
+
+                    @if (Model.Reviews.Any())
+                    {
+                        <div class="vstack gap-3 mb-4">
+                            @foreach (var review in Model.Reviews.OrderByDescending(r => r.CreatedAt))
+                            {
+                                <div class="p-3 bg-light rounded border">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <h6 class="fw-bold mb-0">@review.AuthorName</h6>
+                                        <div class="text-warning">
+                                            @for (int i = 1; i <= 5; i++)
+                                            {
+                                                if (i <= review.Rating)
+                                                {
+                                                    <i class="bi bi-star-fill"></i>
+                                                }
+                                                else
+                                                {
+                                                    <i class="bi bi-star"></i>
+                                                }
+                                            }
+                                        </div>
+                                    </div>
+                                    <small class="text-muted d-block mb-2">@review.CreatedAt.ToString("dd.MM.yyyy HH:mm")</small>
+                                    <p class="mb-0 text-secondary">@review.Comment</p>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">Ще немає відгуків про це місце. Будьте першим!</p>
+                    }
+
+                    <div class="card bg-white border p-3 shadow-sm">
+                        <h6 class="fw-bold mb-3">Залишити свій відгук</h6>
+                        <form asp-action="AddReview" method="post">
+                            <input type="hidden" name="glampingSiteId" value="@Model.Id" />
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-8">
+                                    <input type="text" name="AuthorName" class="form-control form-control-sm" placeholder="Ваше ім'я" required />
+                                </div>
+                                <div class="col-md-4">
+                                    <select name="Rating" class="form-select form-select-sm" required>
+                                        <option value="5">⭐⭐⭐⭐⭐ (5 зірок)</option>
+                                        <option value="4">⭐⭐⭐⭐ (4 зірки)</option>
+                                        <option value="3">⭐⭐⭐ (3 зірки)</option>
+                                        <option value="2">⭐⭐ (2 зірки)</option>
+                                        <option value="1">⭐ (1 зірка)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <textarea name="Comment" class="form-control form-control-sm" rows="2" placeholder="Напишіть ваші враження..." required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-outline-success btn-sm">
+                                <i class="bi bi-send me-1"></i>Надіслати відгук
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card bg-light border shadow-sm sticky-top" style="top: 20px;">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-baseline mb-3">
+                            <span class="fs-3 fw-bold text-success">@Model.PricePerNight.ToString("N0") ₴</span>
+                            <span class="text-muted">за добу</span>
+                        </div>
+
+                        <ul class="list-unstyled mb-4">
+                            <li class="mb-2">
+                                <i class="bi bi-people-fill text-primary me-2"></i>Максимально: <strong>@Model.MaxGuests гостей</strong>
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-telephone-fill text-primary me-2"></i>Телефон: <strong>@(Model.ContactPhone ?? "не вказано")</strong>
+                            </li>
+                            <li class="mb-2">
+                                <i class="bi bi-geo-alt-fill text-primary me-2"></i>Координати: <strong>@Model.Latitude.ToString("F4"), @Model.Longitude.ToString("F4")</strong>
+                            </li>
+                        </ul>
+
+                        <div class="d-grid gap-2">
+                            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary">
+                                <i class="bi bi-pencil me-1"></i>Редагувати інформацію
+                            </a>
+                            <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger">
+                                <i class="bi bi-trash me-1"></i>Видалити глемпінг
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

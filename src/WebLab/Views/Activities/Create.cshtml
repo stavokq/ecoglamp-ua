@@ -1,0 +1,42 @@
+@model WebLab.Models.Activity
+
+@{
+    ViewData["Title"] = "Додати активність";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-success text-white py-3">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-plus-circle me-2"></i>Додати нову активність</h5>
+            </div>
+            <div class="card-body p-4">
+                <form asp-action="Create">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    <div class="mb-3">
+                        <label asp-for="Name" class="form-label fw-bold"></label>
+                        <input asp-for="Name" class="form-control" placeholder="Наприклад: Прокат велосипедів" />
+                        <span asp-validation-for="Name" class="text-danger small"></span>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="IconClass" class="form-label fw-bold"></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-tag"></i></span>
+                            <input asp-for="IconClass" class="form-control" placeholder="bi-bicycle" />
+                        </div>
+                        <small class="text-muted">Клас з <a href="https://icons.getbootstrap.com/" target="_blank">Bootstrap Icons</a> (наприклад: bi-water, bi-bicycle, bi-fire, bi-heart)</small>
+                        <span asp-validation-for="IconClass" class="text-danger small"></span>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+                        <a asp-action="Index" class="btn btn-secondary">Скасувати</a>
+                        <button type="submit" class="btn btn-success">Зберегти</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

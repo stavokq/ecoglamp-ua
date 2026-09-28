@@ -1,0 +1,13 @@
+**/.git
+**/.gitignore
+**/.vs
+**/.vscode
+**/*.*proj.user
+**/bin
+**/obj
+**/docker-compose*
+**/Dockerfile*
+**/*.db
+**/*.db-shm
+**/*.db-wal
+README.md

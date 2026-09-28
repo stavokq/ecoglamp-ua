@@ -1,0 +1,62 @@
+@model IEnumerable<WebLab.Models.Activity>
+
+@{
+    ViewData["Title"] = "Активності та зручності";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h2 fw-bold text-dark mb-1">
+            <i class="bi bi-activity text-success me-2"></i>Активності та зручності
+        </h1>
+        <p class="text-muted mb-0">Каталог зручностей глемпінгів (зв'язок Many-to-Many)</p>
+    </div>
+    <a asp-action="Create" class="btn btn-success shadow-sm">
+        <i class="bi bi-plus-lg me-1"></i>Додати активність
+    </a>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Іконка</th>
+                        <th>Назва активності</th>
+                        <th>Клас іконки</th>
+                        <th>Використовується в глемпінгах</th>
+                        <th class="text-end pe-4">Дії</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td class="ps-4">
+                                <span class="badge bg-light text-dark p-2 border fs-5">
+                                    <i class="bi @item.IconClass text-success"></i>
+                                </span>
+                            </td>
+                            <td class="fw-bold text-dark">@item.Name</td>
+                            <td><code>@item.IconClass</code></td>
+                            <td>
+                                <span class="badge bg-info text-dark">
+                                    @item.GlampingActivities.Count локацій
+                                </span>
+                            </td>
+                            <td class="text-end pe-4">
+                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-secondary btn-sm me-1">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-outline-danger btn-sm">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

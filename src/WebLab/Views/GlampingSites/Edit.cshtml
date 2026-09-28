@@ -1,0 +1,157 @@
+@model WebLab.ViewModels.GlampingSiteFormViewModel
+
+@{
+    ViewData["Title"] = "Редагування глемпінгу";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-primary text-white py-3">
+                <h4 class="mb-0 fw-bold"><i class="bi bi-pencil-square me-2"></i>Редагувати глемпінг: @Model.Name</h4>
+            </div>
+            <div class="card-body p-4">
+                <form asp-action="Edit" method="post" enctype="multipart/form-data">
+                    <input type="hidden" asp-for="Id" />
+                    <input type="hidden" asp-for="ExistingImageUrl" />
+                    <input type="hidden" asp-for="ExistingDocumentUrl" />
+
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label asp-for="Name" class="form-label fw-bold"></label>
+                            <input asp-for="Name" class="form-control" />
+                            <span asp-validation-for="Name" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label asp-for="RegionId" class="form-label fw-bold"></label>
+                            <select asp-for="RegionId" asp-items="Model.RegionsList" class="form-select"></select>
+                            <span asp-validation-for="RegionId" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12">
+                            <label asp-for="Description" class="form-label fw-bold"></label>
+                            <textarea asp-for="Description" class="form-control" rows="4"></textarea>
+                            <span asp-validation-for="Description" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-8">
+                            <label asp-for="Address" class="form-label fw-bold"></label>
+                            <input asp-for="Address" class="form-control" />
+                            <span asp-validation-for="Address" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label asp-for="ContactPhone" class="form-label fw-bold"></label>
+                            <input asp-for="ContactPhone" class="form-control" />
+                            <span asp-validation-for="ContactPhone" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Latitude" class="form-label fw-bold"></label>
+                            <input asp-for="Latitude" class="form-control" />
+                            <span asp-validation-for="Latitude" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="Longitude" class="form-label fw-bold"></label>
+                            <input asp-for="Longitude" class="form-control" />
+                            <span asp-validation-for="Longitude" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="PricePerNight" class="form-label fw-bold"></label>
+                            <div class="input-group">
+                                <input asp-for="PricePerNight" class="form-control" />
+                                <span class="input-group-text">₴ / доба</span>
+                            </div>
+                            <span asp-validation-for="PricePerNight" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label asp-for="MaxGuests" class="form-label fw-bold"></label>
+                            <input asp-for="MaxGuests" class="form-control" type="number" min="1" max="30" />
+                            <span asp-validation-for="MaxGuests" class="text-danger small"></span>
+                        </div>
+
+                        <div class="col-12 mt-4">
+                            <div class="p-3 bg-light rounded border">
+                                <h6 class="fw-bold text-primary mb-3">
+                                    <i class="bi bi-paperclip me-1"></i>Медіафайли та документація
+                                </h6>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Зображення об'єкта</label>
+                                        @if (!string.IsNullOrEmpty(Model.ExistingImageUrl))
+                                        {
+                                            <div class="mb-2">
+                                                <img src="@Model.ExistingImageUrl" alt="Preview" class="img-thumbnail" style="max-height: 100px;" />
+                                            </div>
+                                        }
+                                        <label asp-for="ImageFile" class="form-label small"></label>
+                                        <input asp-for="ImageFile" type="file" accept="image/*" class="form-control" />
+                                        <div class="mt-2">
+                                            <input asp-for="ImageUrl" class="form-control form-control-sm" placeholder="або посилання на фото" />
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <label class="form-label fw-bold">Файл документа / буклет</label>
+                                        @if (!string.IsNullOrEmpty(Model.ExistingDocumentUrl))
+                                        {
+                                            <div class="mb-2">
+                                                <a href="@Model.ExistingDocumentUrl" target="_blank" class="badge bg-info text-dark p-2 text-decoration-none">
+                                                    <i class="bi bi-file-earmark-arrow-down me-1"></i>Переглянути поточний документ
+                                                </a>
+                                            </div>
+                                        }
+                                        <label asp-for="DocumentFile" class="form-label small"></label>
+                                        <input asp-for="DocumentFile" type="file" accept=".pdf,.doc,.docx" class="form-control" />
+                                        <div class="mt-2">
+                                            <input asp-for="DocumentUrl" class="form-control form-control-sm" placeholder="або посилання на файл" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 mt-3">
+                            <label class="form-label fw-bold">Активності та зручності</label>
+                            <div class="row g-2 p-3 bg-light rounded border">
+                                @foreach (var act in Model.AvailableActivities)
+                                {
+                                    var isChecked = Model.SelectedActivityIds.Contains(act.Id);
+                                    <div class="col-md-4 col-sm-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" 
+                                                   name="SelectedActivityIds" value="@act.Id" 
+                                                   id="act_@act.Id" @(isChecked ? "checked" : "") />
+                                            <label class="form-check-label" for="act_@act.Id">
+                                                <i class="bi @act.IconClass text-success me-1"></i>@act.Name
+                                            </label>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="bi bi-x-circle me-1"></i>Скасувати
+                        </a>
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="bi bi-check-circle me-1"></i>Зберегти зміни
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

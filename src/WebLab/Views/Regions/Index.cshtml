@@ -1,0 +1,58 @@
+@model IEnumerable<WebLab.Models.Region>
+
+@{
+    ViewData["Title"] = "Регіони";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h2 fw-bold text-dark mb-1">
+            <i class="bi bi-geo-alt text-primary me-2"></i>Природні регіони та локації
+        </h1>
+        <p class="text-muted mb-0">Управління довідником регіонів України</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary shadow-sm">
+        <i class="bi bi-plus-lg me-1"></i>Додати регіон
+    </a>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Назва регіону</th>
+                        <th>Опис</th>
+                        <th>Кількість об'єктів</th>
+                        <th class="text-end pe-4">Дії</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td class="ps-4 fw-bold text-dark">
+                                <i class="bi bi-map me-2 text-secondary"></i>@item.Name
+                            </td>
+                            <td class="text-muted">@item.Description</td>
+                            <td>
+                                <span class="badge bg-secondary">
+                                    @item.GlampingSites.Count об'єктів
+                                </span>
+                            </td>
+                            <td class="text-end pe-4">
+                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-secondary btn-sm me-1" title="Редагувати">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-outline-danger btn-sm" title="Видалити">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

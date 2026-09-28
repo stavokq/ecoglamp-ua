@@ -1,0 +1,32 @@
+@model WebLab.Models.Activity
+
+@{
+    ViewData["Title"] = "Видалити активність";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-danger border-2">
+            <div class="card-header bg-danger text-white py-3">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-exclamation-triangle me-2"></i>Підтвердження видалення</h5>
+            </div>
+            <div class="card-body p-4">
+                <p class="text-danger fw-bold">Ви дійсно бажаєте видалити цю активність?</p>
+                <div class="p-3 bg-light rounded mb-3 d-flex align-items-center">
+                    <span class="badge bg-light text-dark p-2 border fs-4 me-3">
+                        <i class="bi @Model.IconClass text-success"></i>
+                    </span>
+                    <h5 class="fw-bold mb-0">@Model.Name</h5>
+                </div>
+
+                <form asp-action="Delete">
+                    <input type="hidden" asp-for="Id" />
+                    <div class="d-flex justify-content-end gap-2 pt-2">
+                        <a asp-action="Index" class="btn btn-secondary">Скасувати</a>
+                        <button type="submit" class="btn btn-danger">Видалити</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

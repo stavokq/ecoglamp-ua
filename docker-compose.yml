@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: weblab-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: glampingdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: weblab-app
+    restart: unless-stopped
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - DatabaseProvider=PostgreSql
+      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=glampingdb;Username=postgres;Password=postgres
+    depends_on:
+      - db
+    volumes:
+      - uploads_data:/app/wwwroot/uploads
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:
+  uploads_data:
+
+networks:
+  app-network:
+    driver: bridge
