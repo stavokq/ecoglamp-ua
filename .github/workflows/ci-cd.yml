@@ -2,9 +2,9 @@ name: CI/CD Pipeline - Build, Test & Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
   workflow_dispatch:
 
 env:
@@ -64,7 +64,7 @@ jobs:
     name: Continuous Deployment (Azure App Service)
     runs-on: ubuntu-latest
     needs: [build, docker-check]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && github.event_name == 'push'
 
     steps:
     - name: Download build artifact
@@ -85,7 +85,7 @@ jobs:
     name: Deploy to Cloud Webhook
     runs-on: ubuntu-latest
     needs: [build, docker-check]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && github.event_name == 'push'
 
     steps:
     - name: Trigger Cloud Deploy Webhook
