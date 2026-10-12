@@ -29,3 +29,33 @@ body {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
   text-align: start;
 }
+
+.ui-autocomplete {
+  background-color: #ffffff !important;
+  border: 1px solid #dee2e6 !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+  max-height: 350px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  z-index: 2050 !important;
+  padding: 0.25rem 0 !important;
+  list-style: none !important;
+}
+
+.ui-menu-item {
+  cursor: pointer !important;
+}
+
+.ui-menu-item .ui-menu-item-wrapper {
+  padding: 0.5rem 0.75rem !important;
+  color: #212529 !important;
+  transition: background-color 0.15s ease-in-out !important;
+}
+
+.ui-menu-item .ui-menu-item-wrapper.ui-state-active,
+.ui-menu-item .ui-menu-item-wrapper:hover {
+  background-color: #f0fdf4 !important;
+  color: #198754 !important;
+  border: none !important;
+}

@@ -26,15 +26,22 @@ public class GlampingSitesApiController : ControllerBase
     [HttpGet("autocomplete")]
     public async Task<IActionResult> Autocomplete([FromQuery] string? term)
     {
-        if (string.IsNullOrWhiteSpace(term) || term.Trim().Length < 3)
+        if (string.IsNullOrWhiteSpace(term) || term.Trim().Length < 1)
         {
             return Ok(Array.Empty<object>());
         }
 
-        var lowerTerm = term.Trim().ToLower();
-        var results = await _context.GlampingSites
+        var trimmed = term.Trim();
+        var allSites = await _context.GlampingSites
             .Include(g => g.Region)
-            .Where(g => g.Name.ToLower().Contains(lowerTerm) || g.Address.ToLower().Contains(lowerTerm))
+            .AsNoTracking()
+            .ToListAsync();
+
+        var results = allSites
+            .Where(g => (g.Name != null && g.Name.Contains(trimmed, StringComparison.OrdinalIgnoreCase)) ||
+                        (g.Address != null && g.Address.Contains(trimmed, StringComparison.OrdinalIgnoreCase)) ||
+                        (g.Description != null && g.Description.Contains(trimmed, StringComparison.OrdinalIgnoreCase)) ||
+                        (g.Region != null && g.Region.Name != null && g.Region.Name.Contains(trimmed, StringComparison.OrdinalIgnoreCase)))
             .OrderBy(g => g.Name)
             .Take(10)
             .Select(g => new
@@ -47,7 +54,7 @@ public class GlampingSitesApiController : ControllerBase
                 region = g.Region != null ? g.Region.Name : string.Empty,
                 image = g.ImageUrl
             })
-            .ToListAsync();
+            .ToList();
 
         return Ok(results);
     }
@@ -83,20 +90,26 @@ public class GlampingSitesApiController : ControllerBase
             query = query.Where(g => g.RegionId == regionId.Value);
         }
 
+        var allSites = await query.ToListAsync();
+
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var searchLower = search.Trim().ToLower();
-            query = query.Where(g => g.Name.ToLower().Contains(searchLower) ||
-                                     g.Address.ToLower().Contains(searchLower));
+            var searchTrimmed = search.Trim();
+            allSites = allSites
+                .Where(g => (g.Name != null && g.Name.Contains(searchTrimmed, StringComparison.OrdinalIgnoreCase)) ||
+                            (g.Address != null && g.Address.Contains(searchTrimmed, StringComparison.OrdinalIgnoreCase)) ||
+                            (g.Description != null && g.Description.Contains(searchTrimmed, StringComparison.OrdinalIgnoreCase)) ||
+                            (g.Region != null && g.Region.Name != null && g.Region.Name.Contains(searchTrimmed, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
         }
 
-        var totalCount = await query.CountAsync();
+        var totalCount = allSites.Count;
 
-        var sites = await query
+        var sites = allSites
             .OrderByDescending(g => g.CreatedAt)
             .Skip(skip)
             .Take(limit)
-            .ToListAsync();
+            .ToList();
 
         var items = sites.Select(MapToDto).ToList();
 

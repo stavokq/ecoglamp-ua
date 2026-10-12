@@ -34,19 +34,22 @@ public class GlampingSitesController : Controller
             query = query.Where(g => g.RegionId == regionId.Value);
         }
 
-        if (!string.IsNullOrWhiteSpace(searchString))
-        {
-            var searchLower = searchString.Trim().ToLower();
-            query = query.Where(g => g.Name.ToLower().Contains(searchLower) ||
-                                     g.Address.ToLower().Contains(searchLower) ||
-                                     g.Description.ToLower().Contains(searchLower));
-        }
-
         ViewBag.Regions = new SelectList(await _context.Regions.OrderBy(r => r.Name).ToListAsync(), "Id", "Name", regionId);
         ViewBag.CurrentRegionId = regionId;
         ViewBag.CurrentSearch = searchString;
 
         var list = await query.OrderByDescending(g => g.CreatedAt).ToListAsync();
+
+        if (!string.IsNullOrWhiteSpace(searchString))
+        {
+            var searchTrimmed = searchString.Trim();
+            list = list.Where(g => (g.Name != null && g.Name.Contains(searchTrimmed, StringComparison.OrdinalIgnoreCase)) ||
+                                   (g.Address != null && g.Address.Contains(searchTrimmed, StringComparison.OrdinalIgnoreCase)) ||
+                                   (g.Description != null && g.Description.Contains(searchTrimmed, StringComparison.OrdinalIgnoreCase)) ||
+                                   (g.Region != null && g.Region.Name.Contains(searchTrimmed, StringComparison.OrdinalIgnoreCase)))
+                       .ToList();
+        }
+
         return View(list);
     }
 

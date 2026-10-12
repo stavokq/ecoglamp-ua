@@ -25,14 +25,18 @@ public class RegionsApiController : ControllerBase
     public async Task<IActionResult> Search([FromQuery] string? term, [FromQuery] string? q)
     {
         var searchQuery = term ?? q;
-        if (string.IsNullOrWhiteSpace(searchQuery) || searchQuery.Trim().Length < 3)
+        if (string.IsNullOrWhiteSpace(searchQuery) || searchQuery.Trim().Length < 1)
         {
             return Ok(new { results = Array.Empty<object>() });
         }
 
-        var lowerQuery = searchQuery.Trim().ToLower();
-        var regions = await _context.Regions
-            .Where(r => r.Name.ToLower().Contains(lowerQuery))
+        var trimmed = searchQuery.Trim();
+        var allRegions = await _context.Regions
+            .AsNoTracking()
+            .ToListAsync();
+
+        var regions = allRegions
+            .Where(r => r.Name != null && r.Name.Contains(trimmed, StringComparison.OrdinalIgnoreCase))
             .OrderBy(r => r.Name)
             .Take(30)
             .Select(r => new
@@ -40,7 +44,7 @@ public class RegionsApiController : ControllerBase
                 id = r.Id,
                 text = r.Name
             })
-            .ToListAsync();
+            .ToList();
 
         return Ok(new { results = regions });
     }

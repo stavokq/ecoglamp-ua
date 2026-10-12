@@ -166,9 +166,9 @@
     <script>
         $('#regionAutocompleteSelect').select2({
             theme: 'bootstrap-5',
-            placeholder: 'Введіть від 3 символів для пошуку регіону...',
+            placeholder: 'Оберіть або введіть назву регіону...',
             allowClear: true,
-            minimumInputLength: 3,
+            minimumInputLength: 1,
             ajax: {
                 url: '/api/regions/search',
                 dataType: 'json',

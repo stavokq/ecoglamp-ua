@@ -30,7 +30,7 @@
                         <i class="bi bi-search text-muted"></i>
                     </span>
                     <input type="text" id="searchGlampingInput" name="searchString" value="@ViewBag.CurrentSearch" 
-                           class="form-control border-start-0" placeholder="Пошук за назвою або адресою (від 3 символів)..." />
+                           class="form-control border-start-0" placeholder="Пошук за назвою, регіоном або адресою..." />
                 </div>
             </div>
             <div class="col-md-4">
@@ -148,8 +148,8 @@
 @section Scripts {
 <script>
     $('#searchGlampingInput').autocomplete({
-        minLength: 3,
-        delay: 300,
+        minLength: 1,
+        delay: 200,
         source: function (request, response) {
             $.ajax({
                 url: '/api/glampingsites/autocomplete',
