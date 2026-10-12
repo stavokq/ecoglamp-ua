@@ -11,9 +11,14 @@
         </h1>
         <p class="text-muted mb-0">Знайдіть найкраще місце для єднання з природою</p>
     </div>
-    <a asp-action="Create" class="btn btn-success shadow-sm">
-        <i class="bi bi-plus-lg me-1"></i>Додати новий об'єкт
-    </a>
+    <div class="d-flex gap-2">
+        <a asp-action="Map" class="btn btn-outline-success shadow-sm">
+            <i class="bi bi-map me-1"></i>Інтерактивна мапа
+        </a>
+        <a asp-action="Create" class="btn btn-success shadow-sm">
+            <i class="bi bi-plus-lg me-1"></i>Додати новий об'єкт
+        </a>
+    </div>
 </div>
 
 <div class="card shadow-sm border-0 mb-4 bg-white">
@@ -24,8 +29,8 @@
                     <span class="input-group-text bg-light border-end-0">
                         <i class="bi bi-search text-muted"></i>
                     </span>
-                    <input type="text" name="searchString" value="@ViewBag.CurrentSearch" 
-                           class="form-control border-start-0" placeholder="Пошук за назвою або адресою..." />
+                    <input type="text" id="searchGlampingInput" name="searchString" value="@ViewBag.CurrentSearch" 
+                           class="form-control border-start-0" placeholder="Пошук за назвою або адресою (від 3 символів)..." />
                 </div>
             </div>
             <div class="col-md-4">
@@ -139,3 +144,45 @@
         }
     }
 </div>
+
+@section Scripts {
+<script>
+    $('#searchGlampingInput').autocomplete({
+        minLength: 3,
+        delay: 300,
+        source: function (request, response) {
+            $.ajax({
+                url: '/api/glampingsites/autocomplete',
+                dataType: 'json',
+                data: { term: request.term },
+                success: function (data) {
+                    response($.map(data, function (item) {
+                        return {
+                            label: item.label,
+                            value: item.value,
+                            url: item.url,
+                            price: item.price,
+                            region: item.region,
+                            image: item.image
+                        };
+                    }));
+                }
+            });
+        },
+        select: function (event, ui) {
+            if (ui.item && ui.item.url) {
+                window.location.href = ui.item.url;
+                return false;
+            }
+        }
+    }).autocomplete('instance')._renderItem = function (ul, item) {
+        var imgTag = item.image ? '<img src="' + item.image + '" style="width: 36px; height: 36px; object-fit: cover; border-radius: 4px; margin-right: 8px;" />' : '<i class="bi bi-tree text-success me-2 fs-5"></i>';
+        var content = '<div class="d-flex align-items-center p-2 border-bottom">' +
+            imgTag +
+            '<div class="flex-grow-1"><div class="fw-bold small">' + item.value + '</div>' +
+            '<div class="text-muted" style="font-size: 11px;">📍 ' + item.region + ' • <span class="text-success fw-bold">' + item.price + ' ₴</span></div></div>' +
+            '</div>';
+        return $('<li>').append(content).appendTo(ul);
+    };
+</script>
+}

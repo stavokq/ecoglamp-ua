@@ -1,0 +1,520 @@
+{
+	"info": {
+		"_postman_id": "b3e9a112-78d4-4f81-8051-92bdfa67e810",
+		"name": "EcoGlamp UA - Web API Tests (C5, B1, QA1)",
+		"description": "Автоматизований набір тестів для REST API (C5), пагінації (B1) та автоматизованого тестування (QA1) проєкту EcoGlamp UA.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "createdSiteId",
+			"value": "1",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "01. GET Glamping Sites (Пагінація skip=0, limit=3)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Статус-код 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Формат відповіді валідний JSON з полями пагінації\", function () {",
+							"    var data = pm.response.json();",
+							"    pm.expect(data).to.have.property(\"items\");",
+							"    pm.expect(data).to.have.property(\"totalCount\");",
+							"    pm.expect(data).to.have.property(\"skip\", 0);",
+							"    pm.expect(data).to.have.property(\"limit\", 3);",
+							"    pm.expect(data.items).to.be.an(\"array\");",
+							"    pm.expect(data.items.length).to.be.at.most(3);",
+							"});",
+							"",
+							"pm.test(\"Поле nextLink присутнє, якщо елементів більше ніж limit\", function () {",
+							"    var data = pm.response.json();",
+							"    if (data.totalCount > 3) {",
+							"        pm.expect(data.nextLink).to.be.a(\"string\");",
+							"        pm.expect(data.nextLink).to.include(\"skip=3\");",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/glampingsites?skip=0&limit=3",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"glampingsites"
+					],
+					"query": [
+						{
+							"key": "skip",
+							"value": "0"
+						},
+						{
+							"key": "limit",
+							"value": "3"
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "02. GET Glamping Sites (Наступна сторінка skip=3, limit=3)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Статус-код 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Skip коректно встановлено на 3\", function () {",
+							"    var data = pm.response.json();",
+							"    pm.expect(data.skip).to.eql(3);",
+							"    pm.expect(data.items).to.be.an(\"array\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/glampingsites?skip=3&limit=3",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"glampingsites"
+					],
+					"query": [
+						{
+							"key": "skip",
+							"value": "3"
+						},
+						{
+							"key": "limit",
+							"value": "3"
+						}
+					]
+				}
+			}
+		},
+		{
+			"name": "03. GET Glamping Site За ID (Існуючий об'єкт)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Статус-код 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Об'єкт містить обов'язкові властивості\", function () {",
+							"    var data = pm.response.json();",
+							"    pm.expect(data).to.have.property(\"id\");",
+							"    pm.expect(data).to.have.property(\"name\");",
+							"    pm.expect(data).to.have.property(\"pricePerNight\");",
+							"    pm.expect(data).to.have.property(\"regionId\");",
+							"    pm.expect(data.pricePerNight).to.be.above(0);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/glampingsites/1",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"glampingsites",
+						"1"
+					]
+				}
+			}
+		},
+		{
+			"name": "04. GET Glamping Site За Неіснуючим ID (404 Not Found)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Статус-код 404 Not Found\", function () {",
+							"    pm.response.to.have.status(404);",
+							"});",
+							"",
+							"pm.test(\"Повідомлення про відсутність ресурсу повернуто\", function () {",
+							"    var data = pm.response.json();",
+							"    pm.expect(data).to.have.property(\"message\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/glampingsites/999999",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"glampingsites",
+						"999999"
+					]
+				}
+			}
+		},
+		{
+			"name": "05. POST Створення Глемпінгу (201 Created)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Статус-код 201 Created\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"pm.test(\"Заголовок Location повертається\", function () {",
+							"    pm.response.to.have.header(\"Location\");",
+							"});",
+							"",
+							"pm.test(\"Створений об'єкт має коректні поля та генерує ID\", function () {",
+							"    var data = pm.response.json();",
+							"    pm.expect(data.name).to.eql(\"Купольний Глемпінг Postman AutoTest\");",
+							"    pm.expect(data.pricePerNight).to.eql(3200);",
+							"    pm.expect(data.id).to.be.above(0);",
+							"    pm.collectionVariables.set(\"createdSiteId\", data.id);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Купольний Глемпінг Postman AutoTest\",\n  \"description\": \"Автоматично створений тестовий об'єкт для перевірки REST API\",\n  \"address\": \"Івано-Франківська обл., с. Яблуниця\",\n  \"latitude\": 48.31,\n  \"longitude\": 24.48,\n  \"pricePerNight\": 3200,\n  \"maxGuests\": 4,\n  \"regionId\": 1,\n  \"contactPhone\": \"+380501112233\",\n  \"activityIds\": [1, 2]\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/glampingsites",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"glampingsites"
+					]
+				}
+			}
+		},
+		{
+			"name": "06. POST Створення з невалідними даними (400 Bad Request)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Статус-код 400 Bad Request\", function () {",
+							"    pm.response.to.have.status(400);",
+							"});",
+							"",
+							"pm.test(\"Сервер повертає структуру помилок валідації\", function () {",
+							"    var data = pm.response.json();",
+							"    pm.expect(data).to.be.an(\"object\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"\",\n  \"description\": \"\",\n  \"address\": \"\",\n  \"pricePerNight\": -100,\n  \"maxGuests\": 0,\n  \"regionId\": 999999\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/glampingsites",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"glampingsites"
+					]
+				}
+			}
+		},
+		{
+			"name": "07. PUT Оновлення Глемпінгу (200 OK)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Статус-код 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Дані об'єкта успішно оновлені\", function () {",
+							"    var data = pm.response.json();",
+							"    pm.expect(data.name).to.eql(\"Оновлений Глемпінг Postman VIP\");",
+							"    pm.expect(data.pricePerNight).to.eql(4500);",
+							"    pm.expect(data.maxGuests).to.eql(6);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"name\": \"Оновлений Глемпінг Postman VIP\",\n  \"description\": \"Оновлений опис тестового глемпінгу для автоматичних тестів\",\n  \"address\": \"Івано-Франківська обл., с. Поляниця\",\n  \"latitude\": 48.35,\n  \"longitude\": 24.42,\n  \"pricePerNight\": 4500,\n  \"maxGuests\": 6,\n  \"regionId\": 1,\n  \"contactPhone\": \"+380509998877\",\n  \"activityIds\": [1]\n}"
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/glampingsites/{{createdSiteId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"glampingsites",
+						"{{createdSiteId}}"
+					]
+				}
+			}
+		},
+		{
+			"name": "08. DELETE Видалення Глемпінгу (200 OK)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Статус-код 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Повідомлення про успішне видалення повернено\", function () {",
+							"    var data = pm.response.json();",
+							"    pm.expect(data).to.have.property(\"message\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/glampingsites/{{createdSiteId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"glampingsites",
+						"{{createdSiteId}}"
+					]
+				}
+			}
+		},
+		{
+			"name": "09. GET Перевірка відсутності після видалення (404 Not Found)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Статус-код 404 Not Found після видалення\", function () {",
+							"    pm.response.to.have.status(404);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/glampingsites/{{createdSiteId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"glampingsites",
+						"{{createdSiteId}}"
+					]
+				}
+			}
+		},
+		{
+			"name": "10. GET Отримання списку Регіонів (200 OK)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Статус-код 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Повертається непорожній масив регіонів\", function () {",
+							"    var data = pm.response.json();",
+							"    pm.expect(data).to.be.an(\"array\");",
+							"    pm.expect(data.length).to.be.above(0);",
+							"    pm.expect(data[0]).to.have.property(\"name\");",
+							"    pm.expect(data[0]).to.have.property(\"sitesCount\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/regions",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"regions"
+					]
+				}
+			}
+		},
+		{
+			"name": "11. GET Отримання списку Активностей (200 OK)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Статус-код 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Повертається непорожній масив активностей\", function () {",
+							"    var data = pm.response.json();",
+							"    pm.expect(data).to.be.an(\"array\");",
+							"    pm.expect(data.length).to.be.above(0);",
+							"    pm.expect(data[0]).to.have.property(\"iconClass\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/activities",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"activities"
+					]
+				}
+			}
+		},
+		{
+			"name": "12. GET Повторний запит регіонів (Перевірка кешу X-Cache: HIT)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Статус-код 200 OK\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Відповідь отримана з In-Memory кешу (X-Cache: HIT)\", function () {",
+							"    pm.expect(pm.response.headers.get(\"X-Cache\")).to.eql(\"HIT\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{baseUrl}}/api/regions",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"regions"
+					]
+				}
+			}
+		}
+	]
+}

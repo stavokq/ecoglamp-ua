@@ -27,7 +27,16 @@
 
                         <div class="col-md-4">
                             <label asp-for="RegionId" class="form-label fw-bold"></label>
-                            <select asp-for="RegionId" asp-items="Model.RegionsList" class="form-select"></select>
+                            <select asp-for="RegionId" id="regionAutocompleteSelect" class="form-select select2-ajax-region">
+                                @if (Model.RegionId > 0 && Model.RegionsList != null)
+                                {
+                                    var selected = Model.RegionsList.FirstOrDefault(r => r.Value == Model.RegionId.ToString());
+                                    if (selected != null)
+                                    {
+                                        <option value="@selected.Value" selected="selected">@selected.Text</option>
+                                    }
+                                }
+                            </select>
                             <span asp-validation-for="RegionId" class="text-danger small"></span>
                         </div>
 
@@ -154,4 +163,28 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        $('#regionAutocompleteSelect').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Введіть від 3 символів для пошуку регіону...',
+            allowClear: true,
+            minimumInputLength: 3,
+            ajax: {
+                url: '/api/regions/search',
+                dataType: 'json',
+                delay: 300,
+                data: function (params) {
+                    return {
+                        term: params.term
+                    };
+                },
+                processResults: function (data) {
+                    return {
+                        results: data.results || []
+                    };
+                },
+                cache: true
+            }
+        });
+    </script>
 }

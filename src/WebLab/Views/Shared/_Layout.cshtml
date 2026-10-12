@@ -3,11 +3,28 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="EcoGlamp UA — провідна платформа пошуку та бронювання еко-глемпінгів, купольних сфер та лісових лоджів в Україні." />
+    <meta name="keywords" content="глемпінг, еко-туризм, відпочинок на природі, Карпати, Шацькі озера, купольний готель" />
+    <meta name="author" content="EcoGlamp UA" />
+    <meta property="og:site_name" content="EcoGlamp UA" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="@ViewData["Title"] - EcoGlamp UA 🏕️" />
+    <meta property="og:description" content="Відкрийте для себе найкращі еко-глемпінги та затишні купольні будиночки в Україні." />
+    <meta property="og:url" content="https://ecoglamp-ua.onrender.com" />
+    <meta property="og:image" content="https://images.unsplash.com/photo-1510312305653-8ed496efae75?w=1200&q=80" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="EcoGlamp UA" />
+    <meta name="twitter:description" content="Еко-туризм та глемпінги України." />
+    <link rel="canonical" href="https://ecoglamp-ua.onrender.com" />
     <title>@ViewData["Title"] - EcoGlamp UA 🏕️</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/WebLab.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body class="bg-light">
@@ -36,6 +53,16 @@
                         <li class="nav-item">
                             <a class="nav-link" asp-controller="Activities" asp-action="Index">
                                 <i class="bi bi-activity me-1"></i>Активності
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="GlampingSites" asp-action="Map">
+                                <i class="bi bi-map me-1"></i>Мапа локацій
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="GlampingSites" asp-action="Analytics">
+                                <i class="bi bi-bar-chart-line me-1"></i>Аналітика
                             </a>
                         </li>
                     </ul>
@@ -77,6 +104,9 @@
     </footer>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)

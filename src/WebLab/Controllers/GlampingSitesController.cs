@@ -50,6 +50,68 @@ public class GlampingSitesController : Controller
         return View(list);
     }
 
+    public async Task<IActionResult> Map()
+    {
+        var sites = await _context.GlampingSites
+            .AsNoTracking()
+            .Include(g => g.Region)
+            .Include(g => g.Reviews)
+            .Where(g => g.Latitude != 0 && g.Longitude != 0)
+            .OrderBy(g => g.Name)
+            .ToListAsync();
+
+        ViewBag.Regions = await _context.Regions
+            .AsNoTracking()
+            .OrderBy(r => r.Name)
+            .ToListAsync();
+
+        return View(sites);
+    }
+
+    public async Task<IActionResult> Analytics()
+    {
+        var regionsData = await _context.Regions
+            .AsNoTracking()
+            .Select(r => new RegionStatItem
+            {
+                Name = r.Name,
+                Count = r.GlampingSites.Count,
+                AvgPrice = r.GlampingSites.Any() ? Math.Round(r.GlampingSites.Average(g => (double)g.PricePerNight), 0) : 0
+            })
+            .ToListAsync();
+
+        var activitiesData = await _context.Activities
+            .AsNoTracking()
+            .Select(a => new ActivityStatItem
+            {
+                Name = a.Name,
+                Count = a.GlampingActivities.Count
+            })
+            .ToListAsync();
+
+        var totalSites = await _context.GlampingSites.CountAsync();
+        var totalReviews = await _context.Reviews.CountAsync();
+        var avgPriceTotal = totalSites > 0 ? Math.Round(await _context.GlampingSites.AverageAsync(g => (double)g.PricePerNight), 0) : 0;
+
+        var capacity12 = await _context.GlampingSites.CountAsync(g => g.MaxGuests <= 2);
+        var capacity34 = await _context.GlampingSites.CountAsync(g => g.MaxGuests >= 3 && g.MaxGuests <= 4);
+        var capacity5Plus = await _context.GlampingSites.CountAsync(g => g.MaxGuests >= 5);
+
+        var viewModel = new AnalyticsViewModel
+        {
+            TotalSites = totalSites,
+            TotalReviews = totalReviews,
+            AvgPriceTotal = avgPriceTotal,
+            Capacity12 = capacity12,
+            Capacity34 = capacity34,
+            Capacity5Plus = capacity5Plus,
+            Regions = regionsData,
+            Activities = activitiesData
+        };
+
+        return View(viewModel);
+    }
+
     public async Task<IActionResult> Details(int? id)
     {
         if (id == null) return NotFound();

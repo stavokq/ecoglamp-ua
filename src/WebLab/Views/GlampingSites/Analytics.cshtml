@@ -1,0 +1,281 @@
+@model WebLab.ViewModels.AnalyticsViewModel
+
+@{
+    ViewData["Title"] = "Аналітика та статистика глемпінгів";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h2 fw-bold text-dark mb-1">
+            <i class="bi bi-bar-chart-line-fill text-success me-2"></i>Аналітика та статистика EcoGlamp UA
+        </h1>
+        <p class="text-muted mb-0">Візуалізація даних еко-туризму, цін, регіонів та популярності зручностей</p>
+    </div>
+    <div class="mt-2 mt-md-0">
+        <a asp-action="Map" class="btn btn-outline-success me-2">
+            <i class="bi bi-map me-1"></i>Мапа
+        </a>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-grid me-1"></i>Каталог
+        </a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm bg-white rounded-3 h-100">
+            <div class="card-body d-flex align-items-center p-3">
+                <div class="bg-success bg-opacity-10 text-success p-3 rounded-circle me-3">
+                    <i class="bi bi-tree fs-3"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted small mb-1 fw-bold text-uppercase">Всього глемпінгів</h6>
+                    <h3 class="fw-bold mb-0 text-dark">@Model.TotalSites</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm bg-white rounded-3 h-100">
+            <div class="card-body d-flex align-items-center p-3">
+                <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-circle me-3">
+                    <i class="bi bi-geo-alt fs-3"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted small mb-1 fw-bold text-uppercase">Природних регіонів</h6>
+                    <h3 class="fw-bold mb-0 text-dark">@Model.Regions.Count</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm bg-white rounded-3 h-100">
+            <div class="card-body d-flex align-items-center p-3">
+                <div class="bg-warning bg-opacity-10 text-warning p-3 rounded-circle me-3">
+                    <i class="bi bi-cash-coin fs-3"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted small mb-1 fw-bold text-uppercase">Середня ціна / доба</h6>
+                    <h3 class="fw-bold mb-0 text-dark">@Model.AvgPriceTotal.ToString("N0") ₴</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card border-0 shadow-sm bg-white rounded-3 h-100">
+            <div class="card-body d-flex align-items-center p-3">
+                <div class="bg-danger bg-opacity-10 text-danger p-3 rounded-circle me-3">
+                    <i class="bi bi-chat-left-heart fs-3"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted small mb-1 fw-bold text-uppercase">Відгуків гостей</h6>
+                    <h3 class="fw-bold mb-0 text-dark">@Model.TotalReviews</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm bg-white rounded-3 h-100">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-pie-chart-fill text-success me-2"></i>Розподіл глемпінгів за регіонами
+                </h6>
+                <span class="badge bg-light text-secondary border">Кількість</span>
+            </div>
+            <div class="card-body p-4 d-flex align-items-center justify-content-center" style="height: 350px;">
+                <canvas id="regionsDistributionChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm bg-white rounded-3 h-100">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-bar-chart-fill text-primary me-2"></i>Середня вартість доби за регіонами (₴)
+                </h6>
+                <span class="badge bg-light text-secondary border">Ціна</span>
+            </div>
+            <div class="card-body p-4" style="height: 350px;">
+                <canvas id="avgPriceChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm bg-white rounded-3 h-100">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-activity text-warning me-2"></i>Популярність активностей та зручностей
+                </h6>
+                <span class="badge bg-light text-secondary border">Активності</span>
+            </div>
+            <div class="card-body p-4 d-flex align-items-center justify-content-center" style="height: 350px;">
+                <canvas id="activitiesChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm bg-white rounded-3 h-100">
+            <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0 text-dark">
+                    <i class="bi bi-people-fill text-info me-2"></i>Розподіл за місткістю гостей
+                </h6>
+                <span class="badge bg-light text-secondary border">Місткість</span>
+            </div>
+            <div class="card-body p-4 d-flex align-items-center justify-content-center" style="height: 350px;">
+                <canvas id="capacityChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    var regionLabels = [
+        @foreach (var r in Model.Regions)
+        {
+            <text>"@Html.Raw(JavaScriptEncoder.Default.Encode(r.Name))",</text>
+        }
+    ];
+
+    var regionCounts = [
+        @foreach (var r in Model.Regions)
+        {
+            <text>@r.Count,</text>
+        }
+    ];
+
+    var regionAvgPrices = [
+        @foreach (var r in Model.Regions)
+        {
+            <text>@r.AvgPrice,</text>
+        }
+    ];
+
+    var activityLabels = [
+        @foreach (var a in Model.Activities)
+        {
+            <text>"@Html.Raw(JavaScriptEncoder.Default.Encode(a.Name))",</text>
+        }
+    ];
+
+    var activityCounts = [
+        @foreach (var a in Model.Activities)
+        {
+            <text>@a.Count,</text>
+        }
+    ];
+
+    var palette = [
+        '#2e7d32', '#0288d1', '#f57c00', '#d32f2f', '#7b1fa2', 
+        '#00796b', '#c2185b', '#512da8', '#388e3c', '#fbc02d'
+    ];
+
+    var ctxRegions = document.getElementById('regionsDistributionChart').getContext('2d');
+    new Chart(ctxRegions, {
+        type: 'doughnut',
+        data: {
+            labels: regionLabels,
+            datasets: [{
+                data: regionCounts,
+                backgroundColor: palette,
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+
+    var ctxPrice = document.getElementById('avgPriceChart').getContext('2d');
+    new Chart(ctxPrice, {
+        type: 'bar',
+        data: {
+            labels: regionLabels,
+            datasets: [{
+                label: 'Середня ціна за добу (грн)',
+                data: regionAvgPrices,
+                backgroundColor: 'rgba(2, 136, 209, 0.75)',
+                borderColor: '#0288d1',
+                borderWidth: 1.5,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) { return value + ' ₴'; }
+                    }
+                }
+            },
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+
+    var ctxActivities = document.getElementById('activitiesChart').getContext('2d');
+    new Chart(ctxActivities, {
+        type: 'polarArea',
+        data: {
+            labels: activityLabels,
+            datasets: [{
+                data: activityCounts,
+                backgroundColor: [
+                    'rgba(46, 125, 50, 0.7)',
+                    'rgba(245, 124, 0, 0.7)',
+                    'rgba(2, 136, 209, 0.7)',
+                    'rgba(123, 31, 162, 0.7)',
+                    'rgba(211, 47, 47, 0.7)',
+                    'rgba(0, 121, 107, 0.7)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+
+    var ctxCapacity = document.getElementById('capacityChart').getContext('2d');
+    new Chart(ctxCapacity, {
+        type: 'pie',
+        data: {
+            labels: ['1-2 гостя (пари)', '3-4 гостя (сім\'ї)', '5+ гостей (компанії)'],
+            datasets: [{
+                data: [@Model.Capacity12, @Model.Capacity34, @Model.Capacity5Plus],
+                backgroundColor: ['#4caf50', '#ff9800', '#2196f3'],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+</script>
+}
