@@ -3,6 +3,7 @@ using WebLab.Data;
 using WebLab.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddUserSecrets("fab01354-764d-44ac-bee5-dc79d8bd5a74", reloadOnChange: true);
 
 builder.Services.AddControllersWithViews()
     .AddJsonOptions(options =>
@@ -12,6 +13,10 @@ builder.Services.AddControllersWithViews()
     });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient("GeminiClient", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(45);
+});
 builder.Services.AddHttpClient();
 
 builder.Services.AddScoped<IFileService, FileService>();

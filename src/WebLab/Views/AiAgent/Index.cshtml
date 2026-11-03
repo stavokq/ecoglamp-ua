@@ -238,6 +238,8 @@
                 </div>
             `;
             container.tools.appendChild(resDiv);
+        } else if (eventType === 'error') {
+            appendErrorMessage(container, data.message || 'Помилка під час звернення до ШІ-агента');
         } else if (eventType === 'chunk') {
             container.content.textContent += data.delta;
         } else if (eventType === 'done') {

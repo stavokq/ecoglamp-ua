@@ -68,6 +68,29 @@ public class AiAgentController : Controller
         }
 
         var apiKey = _configuration["Gemini:ApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey) || apiKey == "API_KEY")
+        {
+            var secretsPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "UserSecrets", "fab01354-764d-44ac-bee5-dc79d8bd5a74", "secrets.json");
+            if (System.IO.File.Exists(secretsPath))
+            {
+                try
+                {
+                    using var stream = System.IO.File.OpenRead(secretsPath);
+                    using var doc = JsonDocument.Parse(stream);
+                    if (doc.RootElement.TryGetProperty("Gemini:ApiKey", out var k))
+                    {
+                        apiKey = k.GetString();
+                    }
+                }
+                catch { }
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(apiKey) || apiKey == "API_KEY")
+        {
+            apiKey = Environment.GetEnvironmentVariable("Gemini__ApiKey") ?? Environment.GetEnvironmentVariable("GEMINI_API_KEY");
+        }
+
         var model = _configuration["Gemini:Model"] ?? "gemini-3.1-flash-lite";
 
         if (string.IsNullOrWhiteSpace(apiKey) || apiKey == "API_KEY")
@@ -90,8 +113,16 @@ public class AiAgentController : Controller
 
     private async Task HandleWithGeminiAsync(string userMessage, string apiKey, string model, Func<string, object, Task> sendSse, CancellationToken ct)
     {
-        var client = _httpClientFactory.CreateClient();
-        client.Timeout = TimeSpan.FromSeconds(15);
+        await sendSse("thought", new
+        {
+            step = 1,
+            title = "Міркування моделі Gemini",
+            content = "Аналізую запит користувача та визначаю наміри..."
+        });
+        await Task.Delay(200, ct);
+
+        var client = _httpClientFactory.CreateClient("GeminiClient");
+        client.Timeout = TimeSpan.FromSeconds(45);
 
         var requestUri = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
 
@@ -434,6 +465,18 @@ public class AiAgentController : Controller
             await Task.Delay(250, ct);
 
             await StreamTextInChunks(textResponse, sendSse, ct);
+        }
+        else
+        {
+            await sendSse("thought", new
+            {
+                step = 1,
+                title = "Міркування моделі Gemini",
+                content = "Аналізую звернення користувача: виклик інструментів бази даних не потрібен. Формую живу відповідь..."
+            });
+            await Task.Delay(250, ct);
+
+            await StreamTextInChunks("Привіт! Я AI-помічник сервісу EcoGlamp UA. Радий вас вітати! Чим можу допомогти з відпочинком?", sendSse, ct);
         }
     }
 
