@@ -198,14 +198,46 @@
     function handleSseEvent(eventType, data, container) {
         if (eventType === 'thought') {
             const thoughtDiv = document.createElement('div');
-            thoughtDiv.className = 'alert alert-light border small text-muted py-1 px-2 mb-2 rounded-2';
-            thoughtDiv.innerHTML = `<i class="bi bi-lightbulb text-warning me-1"></i>${escapeHtml(data.content || '')}`;
+            thoughtDiv.className = 'alert alert-light border small text-muted py-2 px-3 mb-2 rounded-3';
+            thoughtDiv.innerHTML = `
+                <div class="fw-bold text-dark d-flex align-items-center mb-1">
+                    <i class="bi bi-lightbulb text-warning me-1"></i>Думки агента
+                </div>
+                <div>${escapeHtml(data.content || '')}</div>
+            `;
             container.thoughts.appendChild(thoughtDiv);
         } else if (eventType === 'tool_call') {
             const toolDiv = document.createElement('div');
-            toolDiv.className = 'badge bg-light text-dark border p-2 mb-2 w-100 text-start font-monospace small';
-            toolDiv.innerHTML = `<i class="bi bi-gear-fill text-success me-1"></i>Виклик інструменту: <code>${escapeHtml(data.tool)}</code>`;
+            toolDiv.className = 'bg-light border text-dark p-2 mb-2 rounded-3 font-monospace small';
+            let argsStr = '';
+            if (data.arguments) {
+                try {
+                    argsStr = typeof data.arguments === 'string' ? data.arguments : JSON.stringify(data.arguments);
+                } catch(e) { argsStr = ''; }
+            }
+            toolDiv.innerHTML = `
+                <div class="d-flex align-items-center text-primary fw-bold mb-1">
+                    <i class="bi bi-gear-fill me-1"></i>Tool Calling: <code>${escapeHtml(data.tool)}</code>
+                </div>
+                ${argsStr ? `<div class="text-muted" style="font-size: 0.85em;">Параметри: <code>${escapeHtml(argsStr)}</code></div>` : ''}
+            `;
             container.tools.appendChild(toolDiv);
+        } else if (eventType === 'tool_result') {
+            const resDiv = document.createElement('div');
+            resDiv.className = 'bg-success bg-opacity-10 border border-success text-success p-2 mb-2 rounded-3 font-monospace small';
+            let detail = '';
+            if (data.count !== undefined) detail = `Отримано з бази: ${data.count} локацій`;
+            else if (data.reviewId !== undefined) detail = `Створено відгук #${data.reviewId} у базі даних`;
+            else if (data.totalSites !== undefined) detail = `Метрики: ${data.totalSites} локацій, середня ціна ${data.averagePrice} грн`;
+            else if (data.name !== undefined) detail = `Знайдено: ${data.name} (${data.price} грн)`;
+            else detail = `Статус: ${data.status || 'OK'}`;
+
+            resDiv.innerHTML = `
+                <div class="d-flex align-items-center fw-bold">
+                    <i class="bi bi-check-circle-fill me-1"></i>Проміжний результат: ${escapeHtml(detail)}
+                </div>
+            `;
+            container.tools.appendChild(resDiv);
         } else if (eventType === 'chunk') {
             container.content.textContent += data.delta;
         } else if (eventType === 'done') {
