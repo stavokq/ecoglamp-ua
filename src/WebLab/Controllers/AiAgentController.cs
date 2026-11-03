@@ -1,7 +1,6 @@
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebLab.Data;
@@ -71,31 +70,28 @@ public class AiAgentController : Controller
         var apiKey = _configuration["Gemini:ApiKey"];
         var model = _configuration["Gemini:Model"] ?? "gemini-3.1-flash-lite";
 
-        var handled = false;
-        if (!string.IsNullOrWhiteSpace(apiKey) && apiKey != "API_KEY")
+        if (string.IsNullOrWhiteSpace(apiKey) || apiKey == "API_KEY")
         {
-            try
-            {
-                handled = await TryHandleWithGeminiAsync(userMessage.Trim(), apiKey, model, SendSseAsync, cancellationToken);
-            }
-            catch
-            {
-                handled = false;
-            }
+            await SendSseAsync("error", new { message = "API-ключ Gemini не знайдено в User Secrets." });
+            return;
         }
 
-        if (!handled)
+        try
         {
-            await HandleWithInternalEngineAsync(userMessage.Trim(), SendSseAsync, cancellationToken);
+            await HandleWithGeminiAsync(userMessage.Trim(), apiKey, model, SendSseAsync, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            await SendSseAsync("error", new { message = $"Помилка моделі Gemini: {ex.Message}" });
         }
 
         await SendSseAsync("done", new { status = "completed" });
     }
 
-    private async Task<bool> TryHandleWithGeminiAsync(string userMessage, string apiKey, string model, Func<string, object, Task> sendSse, CancellationToken ct)
+    private async Task HandleWithGeminiAsync(string userMessage, string apiKey, string model, Func<string, object, Task> sendSse, CancellationToken ct)
     {
         var client = _httpClientFactory.CreateClient();
-        client.Timeout = TimeSpan.FromSeconds(12);
+        client.Timeout = TimeSpan.FromSeconds(15);
 
         var requestUri = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
 
@@ -105,7 +101,7 @@ public class AiAgentController : Controller
             {
                 parts = new object[]
                 {
-                    new { text = "Ти дружній AI-помічник сервісу еко-туризму EcoGlamp UA. Відповідай українською мовою. Якщо користувач вітається, дякує чи ставить загальні запитання - відповідай коротко, природно та ввічливо без виклику інструментів. Якщо користувач просить підібрати або знайти глемпінг, дізнатися деталі, переглянути статистику чи залишити відгук - виклич відповідну функцію." }
+                    new { text = "Ти розумний AI-помічник сервісу еко-туризму EcoGlamp UA. Відповідай українською мовою. Якщо користувач вітається, дякує чи ставить загальні запитання - відповідай коротко, щиро та природно без виклику інструментів. Якщо користувач просить знайти чи порадити глемпінг, дізнатися деталі про локацію, отримати статистику або додати відгук - виклич відповідну функцію." }
                 }
             },
             generationConfig = new
@@ -139,7 +135,7 @@ public class AiAgentController : Controller
                                 type = "OBJECT",
                                 properties = new
                                 {
-                                    region = new { type = "STRING", description = "Назва регіону (наприклад, Карпати, Шацькі озера, Поділля)" },
+                                    region = new { type = "STRING", description = "Назва регіону (наприклад, Карпати, Шацькі озера, Поділля, Київщина)" },
                                     maxPrice = new { type = "NUMBER", description = "Максимальна ціна за добу в гривнях" }
                                 }
                             }
@@ -195,28 +191,48 @@ public class AiAgentController : Controller
         var response = await client.PostAsJsonAsync(requestUri, requestBody, ct);
         if (!response.IsSuccessStatusCode)
         {
-            return false;
+            var err = await response.Content.ReadAsStringAsync(ct);
+            await sendSse("error", new { message = $"Помилка Gemini API ({response.StatusCode}): {err}" });
+            return;
         }
 
         var jsonDoc = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: ct);
         if (!jsonDoc.TryGetProperty("candidates", out var candidates) || candidates.GetArrayLength() == 0)
         {
-            return false;
+            await sendSse("error", new { message = "Модель Gemini не повернула варіантів відповіді." });
+            return;
         }
 
         var candidate = candidates[0];
         if (!candidate.TryGetProperty("content", out var content) || !content.TryGetProperty("parts", out var parts) || parts.GetArrayLength() == 0)
         {
-            return false;
+            await sendSse("error", new { message = "Модель Gemini повернула порожній контент." });
+            return;
         }
 
-        var firstPart = parts[0];
-        if (firstPart.TryGetProperty("functionCall", out var functionCall))
-        {
-            var funcName = functionCall.GetProperty("name").GetString() ?? "";
-            var args = functionCall.TryGetProperty("args", out var a) ? a : default;
+        JsonElement? functionCall = null;
+        string textResponse = string.Empty;
 
-            var thoughtContent = $"ШІ визначив виклик інструменту '{funcName}'.";
+        foreach (var part in parts.EnumerateArray())
+        {
+            if (part.TryGetProperty("functionCall", out var fc))
+            {
+                functionCall = fc;
+                break;
+            }
+            if (part.TryGetProperty("text", out var t))
+            {
+                textResponse += t.GetString() ?? "";
+            }
+        }
+
+        if (functionCall.HasValue)
+        {
+            var fc = functionCall.Value;
+            var funcName = fc.GetProperty("name").GetString() ?? "";
+            var args = fc.TryGetProperty("args", out var a) ? a : default;
+
+            var thoughtContent = $"ШІ визначив необхідність виклику інструменту '{funcName}'.";
             if (funcName == "search_glamping_sites")
             {
                 var reg = args.TryGetProperty("region", out var rProp) ? rProp.GetString() : null;
@@ -286,7 +302,6 @@ public class AiAgentController : Controller
 
                     var textRes = $"✅ **Ваш відгук успішно збережено в базі даних!**\n\n• **Локація:** {site.Name}\n• **Автор:** {author}\n• **Оцінка:** {new string('⭐', review.Rating)} ({review.Rating}/5)\n• **Відгук:** *«{comment}»*\n\nВін вже доступний на сторінці [Деталі {site.Name}](/GlampingSites/Details/{site.Id}).";
                     await StreamTextInChunks(textRes, sendSse, ct);
-                    return true;
                 }
             }
             else if (funcName == "get_eco_statistics")
@@ -312,17 +327,20 @@ public class AiAgentController : Controller
                 sb.AppendLine($"• **Відгуків мандрівників:** {totalReviews}\n");
                 sb.AppendLine("Детальні графіки та розподіл за регіонами доступні на сторінці [Аналітика](/GlampingSites/Analytics)!");
                 await StreamTextInChunks(sb.ToString(), sendSse, ct);
-                return true;
             }
             else if (funcName == "get_glamping_details")
             {
                 var siteName = args.TryGetProperty("siteName", out var sNameProp) ? sNameProp.GetString() ?? "" : "";
                 var site = await _context.GlampingSites
+                    .AsNoTracking()
+                    .AsSplitQuery()
                     .Include(g => g.Region)
                     .Include(g => g.Reviews)
                     .Include(g => g.GlampingActivities).ThenInclude(ga => ga.Activity)
                     .FirstOrDefaultAsync(g => !string.IsNullOrEmpty(siteName) && g.Name.Contains(siteName), ct)
                     ?? await _context.GlampingSites
+                        .AsNoTracking()
+                        .AsSplitQuery()
                         .Include(g => g.Region)
                         .Include(g => g.Reviews)
                         .Include(g => g.GlampingActivities).ThenInclude(ga => ga.Activity)
@@ -351,7 +369,6 @@ public class AiAgentController : Controller
                     sb.AppendLine($"• **Телефон:** `{site.ContactPhone}`\n");
                     sb.AppendLine($"[Відкрити сторінку глемпінгу](/GlampingSites/Details/{site.Id}) | [Показати на мапі](/GlampingSites/Map)");
                     await StreamTextInChunks(sb.ToString(), sendSse, ct);
-                    return true;
                 }
             }
             else
@@ -404,12 +421,10 @@ public class AiAgentController : Controller
                     sb.AppendLine($"  [Забронювати / Деталі](/GlampingSites/Details/{s.Id})\n");
                 }
                 await StreamTextInChunks(sb.ToString(), sendSse, ct);
-                return true;
             }
         }
-        else if (firstPart.TryGetProperty("text", out var textProp))
+        else if (!string.IsNullOrWhiteSpace(textResponse))
         {
-            var text = textProp.GetString() ?? "";
             await sendSse("thought", new
             {
                 step = 1,
@@ -418,393 +433,8 @@ public class AiAgentController : Controller
             });
             await Task.Delay(250, ct);
 
-            await StreamTextInChunks(text, sendSse, ct);
-            return true;
+            await StreamTextInChunks(textResponse, sendSse, ct);
         }
-
-        return false;
-    }
-
-    private async Task HandleWithInternalEngineAsync(string userMessage, Func<string, object, Task> sendSse, CancellationToken ct)
-    {
-        var lower = userMessage.ToLowerInvariant();
-
-        if (lower.Contains("привіт") || lower.Contains("добрий день") || lower.Contains("вітаю") || lower.Contains("хай") || lower == "hello" || lower == "hi")
-        {
-            await sendSse("thought", new
-            {
-                step = 1,
-                title = "Аналіз намірів",
-                content = "Користувач надіслав привітання. Формую вітальне повідомлення та огляд можливостей асистента..."
-            });
-            await Task.Delay(250, ct);
-
-            var greetings = new[]
-            {
-                "Привіт! Я AI-помічник сервісу EcoGlamp UA. Радий вітати вас! Допоможу підібрати ідеальний купол або намет у Карпатах, на Шацьких озерах чи біля Києва, зорієнтую за цінами або з радістю збережу ваш відгук. Що вас цікавить?",
-                "Вітаю в EcoGlamp UA! Я ваш персональний гід по затишному відпочинку на природі в Україні. Можу знайти глемпінг під ваш бюджет, розповісти про чани, сауни чи байдарки або показати аналітику. Чим можу допомогти сьогодні?",
-                "Доброго дня! Радий зустрічі в EcoGlamp UA. Шукаєте романтичний відпочинок у горах, сімейний вікенд біля озера чи перезавантаження в лісі? Розкажіть про свої побажання!"
-            };
-            var randomGreeting = greetings[Random.Shared.Next(greetings.Length)];
-            await StreamTextInChunks(randomGreeting, sendSse, ct);
-            return;
-        }
-
-        if (lower.Contains("дякую") || lower.Contains("спасибі") || lower.Contains("thanks") || lower.Contains("thank you"))
-        {
-            await sendSse("thought", new
-            {
-                step = 1,
-                title = "Аналіз намірів",
-                content = "Користувач подякував за допомогу. Формую ввічливу фінальну відповідь..."
-            });
-            await Task.Delay(250, ct);
-
-            await StreamTextInChunks("Будь ласка! Завжди радий допомогти. Бажаю вам чудового та затишного відпочинку на природі!", sendSse, ct);
-            return;
-        }
-
-        if (lower.Contains("хто ти") || lower.Contains("що ти вмієш") || lower.Contains("who are you") || lower.Contains("help"))
-        {
-            await sendSse("thought", new
-            {
-                step = 1,
-                title = "Аналіз намірів",
-                content = "Запит на презентацію можливостей асистента EcoGlamp UA..."
-            });
-            await Task.Delay(250, ct);
-
-            await StreamTextInChunks("Я ваш гід по еко-туризму в Україні. Я вмію підбирати глемпінги за регіоном та бюджетом, показувати зручності, надавати системну статистику цін та публікувати ваші відгуки.", sendSse, ct);
-            return;
-        }
-
-        if (lower.Contains("відгук") || lower.Contains("оцін") || lower.Contains("коментар") || lower.Contains("постав") || lower.Contains("add_review") || lower.Contains("review"))
-        {
-            await HandleAddReviewFlow(userMessage, lower, sendSse, ct);
-        }
-        else if (lower.Contains("статистик") || lower.Contains("скільки") || lower.Contains("середн") || lower.Contains("звіт") || lower.Contains("get_eco_statistics") || lower.Contains("stats") || lower.Contains("statistics"))
-        {
-            await HandleStatisticsFlow(sendSse, ct);
-        }
-        else if (lower.Contains("детал") || lower.Contains("інфо") || lower.Contains("телефон") || lower.Contains("контакт") || lower.Contains("адрес") || lower.Contains("get_glamping_details") || lower.Contains("details") || lower.Contains("edem") || lower.Contains("shatsk") || lower.Contains("bakota") || lower.Contains("polissia") || lower.Contains("едем"))
-        {
-            await HandleDetailsFlow(userMessage, lower, sendSse, ct);
-        }
-        else if (lower.Contains("знайди") || lower.Contains("порадь") || lower.Contains("глемпінг") || lower.Contains("карпат") || lower.Contains("шацьк") || lower.Contains("київ") || lower.Contains("бакот") || lower.Contains("поділ") || lower.Contains("цін") || lower.Contains("бюджет") || lower.Contains("search") || lower.Contains("site") || lower.Contains("glamp") || lower.Contains("search_glamping_sites"))
-        {
-            await HandleSearchFlow(userMessage, lower, sendSse, ct);
-        }
-        else
-        {
-            await StreamTextInChunks("Я можу допомогти підібрати глемпінг за регіоном чи бюджетом, показати актуальні ціни або зберегти ваш відгук про відпочинок. Спробуйте запитати: *'Порадь глемпінг у Карпатах до 5000 грн'* або скористайтеся підказками нижче.", sendSse, ct);
-        }
-    }
-
-    private async Task HandleSearchFlow(string original, string lower, Func<string, object, Task> sendSse, CancellationToken ct)
-    {
-        await sendSse("thought", new
-        {
-            step = 1,
-            title = "Аналіз намірів",
-            content = "Визначаю критерії пошуку: регіон, бюджет, наявність зручностей..."
-        });
-        await Task.Delay(250, ct);
-
-        string? regionFilter = null;
-        if (lower.Contains("карпат")) regionFilter = "Карпати";
-        else if (lower.Contains("шацьк")) regionFilter = "Шацькі";
-        else if (lower.Contains("київ")) regionFilter = "Київ";
-        else if (lower.Contains("поділ") || lower.Contains("товтр") || lower.Contains("бакот")) regionFilter = "Поділ";
-        else if (lower.Contains("полісс")) regionFilter = "Полісся";
-
-        decimal? maxPrice = null;
-        var matchPrice = Regex.Match(lower, @"(\d{3,5})\s*(грн|₴)?");
-        if (matchPrice.Success && decimal.TryParse(matchPrice.Groups[1].Value, out var parsedPrice))
-        {
-            maxPrice = parsedPrice;
-        }
-
-        await sendSse("tool_call", new
-        {
-            tool = "search_glamping_sites",
-            arguments = new
-            {
-                query = original,
-                region = regionFilter,
-                maxPrice = maxPrice
-            }
-        });
-        await Task.Delay(300, ct);
-
-        try
-        {
-            var rawList = await _context.GlampingSites
-                .AsNoTracking()
-                .AsSplitQuery()
-                .Include(g => g.Region)
-                .Include(g => g.Reviews)
-                .Include(g => g.GlampingActivities).ThenInclude(ga => ga.Activity)
-                .ToListAsync(ct);
-
-            var regional = string.IsNullOrEmpty(regionFilter)
-                ? rawList
-                : rawList.Where(g => g.Region != null && g.Region.Name.Contains(regionFilter, StringComparison.OrdinalIgnoreCase)).ToList();
-
-            var matching = regional
-                .Where(g => !maxPrice.HasValue || maxPrice.Value <= 0 || g.PricePerNight <= maxPrice.Value)
-                .OrderBy(g => g.PricePerNight)
-                .Take(4)
-                .ToList();
-
-            bool exceededBudget = false;
-            if (!matching.Any() && regional.Any())
-            {
-                matching = regional.OrderBy(g => g.PricePerNight).Take(4).ToList();
-                exceededBudget = true;
-            }
-            else if (!matching.Any())
-            {
-                matching = rawList.OrderBy(g => g.PricePerNight).Take(3).ToList();
-            }
-
-            await sendSse("tool_result", new
-            {
-                tool = "search_glamping_sites",
-                status = "success",
-                count = matching.Count
-            });
-            await Task.Delay(200, ct);
-
-            var responseBuilder = new StringBuilder();
-            if (exceededBudget && regionFilter != null)
-            {
-                responseBuilder.AppendLine($"У вибраному регіоні **{regionFilter}** вартість доби дещо перевищує вказаний бюджет, але ось найближчий чудовий варіант:\n");
-            }
-            else
-            {
-                responseBuilder.AppendLine($"Я підібрав для вас чудові варіанти відпочинку в **EcoGlamp UA**:\n");
-            }
-
-            foreach (var site in matching)
-            {
-                var stars = site.Reviews != null && site.Reviews.Any() ? Math.Round(site.Reviews.Average(r => r.Rating), 1).ToString("F1") : "5.0";
-                var acts = string.Join(", ", site.GlampingActivities.Where(ga => ga.Activity != null).Select(a => a.Activity!.Name));
-                responseBuilder.AppendLine($"🌲 **{site.Name}** ({site.Region?.Name})");
-                responseBuilder.AppendLine($"• **Ціна:** {site.PricePerNight:N0} ₴ / доба | **Рейтинг:** ⭐ {stars}");
-                if (!string.IsNullOrEmpty(acts))
-                {
-                    responseBuilder.AppendLine($"• **Зручності:** {acts}");
-                }
-                responseBuilder.AppendLine($"• [Переглянути деталі та забронювати](/GlampingSites/Details/{site.Id})\n");
-            }
-
-            await StreamTextInChunks(responseBuilder.ToString(), sendSse, ct);
-        }
-        catch (Exception ex)
-        {
-            await sendSse("tool_result", new
-            {
-                tool = "search_glamping_sites",
-                status = "error",
-                message = ex.Message
-            });
-            await StreamTextInChunks("Вибачте, виникла помилка під час пошуку локацій. Спробуйте змінити критерії пошуку.", sendSse, ct);
-        }
-    }
-
-    private async Task HandleStatisticsFlow(Func<string, object, Task> sendSse, CancellationToken ct)
-    {
-        await sendSse("thought", new
-        {
-            step = 1,
-            title = "Аналіз намірів",
-            content = "Запит на статистичну аналітику системи."
-        });
-        await Task.Delay(250, ct);
-
-        await sendSse("tool_call", new
-        {
-            tool = "get_eco_statistics",
-            arguments = new { scope = "all_system" }
-        });
-        await Task.Delay(300, ct);
-
-        var totalSites = await _context.GlampingSites.CountAsync(ct);
-        var avgPrice = totalSites > 0 ? Math.Round(await _context.GlampingSites.AverageAsync(g => (double)g.PricePerNight, ct), 0) : 0;
-        var totalReviews = await _context.Reviews.CountAsync(ct);
-
-        await sendSse("tool_result", new
-        {
-            tool = "get_eco_statistics",
-            status = "success",
-            totalGlampings = totalSites,
-            averagePrice = avgPrice,
-            totalReviews = totalReviews
-        });
-        await Task.Delay(200, ct);
-
-        var sb = new StringBuilder();
-        sb.AppendLine("📊 **Актуальна статистика EcoGlamp UA:**\n");
-        sb.AppendLine($"• **Всього доступних локацій:** {totalSites}");
-        sb.AppendLine($"• **Середня ціна за добу:** {avgPrice:N0} ₴");
-        sb.AppendLine($"• **Залишено відгуків:** {totalReviews}\n");
-        sb.AppendLine("Детальні інтерактивні графіки доступні на сторінці [Аналітика](/GlampingSites/Analytics)!");
-
-        await StreamTextInChunks(sb.ToString(), sendSse, ct);
-    }
-
-    private async Task HandleDetailsFlow(string original, string lower, Func<string, object, Task> sendSse, CancellationToken ct)
-    {
-        await sendSse("thought", new
-        {
-            step = 1,
-            title = "Пошук сутності",
-            content = "Витягую дані про обраний глемпінг..."
-        });
-        await Task.Delay(250, ct);
-
-        var site = await _context.GlampingSites
-            .AsNoTracking()
-            .AsSplitQuery()
-            .Include(g => g.Region)
-            .Include(g => g.Reviews)
-            .Include(g => g.GlampingActivities).ThenInclude(ga => ga.Activity)
-            .FirstOrDefaultAsync(g => lower.Contains(g.Name.ToLower()), ct)
-            ?? await _context.GlampingSites
-                .AsNoTracking()
-                .AsSplitQuery()
-                .Include(g => g.Region)
-                .Include(g => g.Reviews)
-                .Include(g => g.GlampingActivities).ThenInclude(ga => ga.Activity)
-                .FirstOrDefaultAsync(ct);
-
-        if (site == null)
-        {
-            await StreamTextInChunks("На жаль, локацію не знайдено в базі.", sendSse, ct);
-            return;
-        }
-
-        await sendSse("tool_call", new
-        {
-            tool = "get_glamping_details",
-            arguments = new { siteId = site.Id, siteName = site.Name }
-        });
-        await Task.Delay(300, ct);
-
-        await sendSse("tool_result", new
-        {
-            tool = "get_glamping_details",
-            status = "success",
-            name = site.Name,
-            price = site.PricePerNight
-        });
-        await Task.Delay(200, ct);
-
-        var avgRating = site.Reviews != null && site.Reviews.Any() ? Math.Round(site.Reviews.Average(r => r.Rating), 1).ToString("F1") : "5.0";
-        var acts = string.Join(", ", site.GlampingActivities.Where(ga => ga.Activity != null).Select(a => a.Activity!.Name));
-
-        var sb = new StringBuilder();
-        sb.AppendLine($"🏕️ **{site.Name}** ({site.Region?.Name})\n");
-        sb.AppendLine($"• **Адреса:** {site.Address}");
-        sb.AppendLine($"• **Телефон:** `{site.ContactPhone}`");
-        sb.AppendLine($"• **Ціна за добу:** {site.PricePerNight:N0} ₴");
-        sb.AppendLine($"• **Місткість:** до {site.MaxGuests} осіб | **Рейтинг:** ⭐ {avgRating}");
-        if (!string.IsNullOrEmpty(acts)) sb.AppendLine($"• **Зручності:** {acts}");
-        sb.AppendLine($"\n[Відкрити сторінку локації](/GlampingSites/Details/{site.Id}) | [Показати на мапі](/GlampingSites/Map)");
-
-        await StreamTextInChunks(sb.ToString(), sendSse, ct);
-    }
-
-    private async Task HandleAddReviewFlow(string original, string lower, Func<string, object, Task> sendSse, CancellationToken ct)
-    {
-        await sendSse("thought", new
-        {
-            step = 1,
-            title = "Обробка команди на запис",
-            content = "Витягую сутність, автора, оцінку та текст відгуку..."
-        });
-        await Task.Delay(250, ct);
-
-        var site = await _context.GlampingSites
-            .FirstOrDefaultAsync(g => lower.Contains(g.Name.ToLower()), ct)
-            ?? await _context.GlampingSites.FirstOrDefaultAsync(ct);
-
-        if (site == null)
-        {
-            await StreamTextInChunks("Помилка: не знайдено глемпінг для збереження відгуку.", sendSse, ct);
-            return;
-        }
-
-        int rating = 5;
-        var matchRating = Regex.Match(lower, @"(оцінк[а-я]*|на|рейтинг)\s*([1-5])");
-        if (matchRating.Success && int.TryParse(matchRating.Groups[2].Value, out var parsedRating))
-        {
-            rating = parsedRating;
-        }
-
-        string author = "Гість EcoGlamp";
-        var matchAuthor = Regex.Match(original, @"(від|автор|імені)\s+([A-Za-zА-Яа-яІіЇїЄє]+)");
-        if (matchAuthor.Success)
-        {
-            author = matchAuthor.Groups[2].Value;
-        }
-
-        string commentText = original;
-        var commentIndex = original.IndexOf(':');
-        if (commentIndex >= 0 && commentIndex < original.Length - 1)
-        {
-            commentText = original.Substring(commentIndex + 1).Trim();
-        }
-
-        if (commentText.Length > 300)
-        {
-            commentText = commentText.Substring(0, 300);
-        }
-
-        await sendSse("tool_call", new
-        {
-            tool = "add_review",
-            arguments = new
-            {
-                siteId = site.Id,
-                siteName = site.Name,
-                author = author,
-                rating = rating,
-                comment = commentText
-            }
-        });
-        await Task.Delay(300, ct);
-
-        var newReview = new Review
-        {
-            GlampingSiteId = site.Id,
-            AuthorName = author,
-            Rating = rating,
-            Comment = commentText,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _context.Reviews.Add(newReview);
-        await _context.SaveChangesAsync(ct);
-
-        await sendSse("tool_result", new
-        {
-            tool = "add_review",
-            status = "success",
-            reviewId = newReview.Id,
-            message = $"Відгук збережено до бази даних для '{site.Name}'"
-        });
-        await Task.Delay(200, ct);
-
-        var sb = new StringBuilder();
-        sb.AppendLine($"✅ **Ваш відгук успішно опубліковано!**\n");
-        sb.AppendLine($"• **Локація:** {site.Name}");
-        sb.AppendLine($"• **Автор:** {author}");
-        sb.AppendLine($"• **Оцінка:** {new string('⭐', rating)} ({rating}/5)");
-        sb.AppendLine($"• **Коментар:** *«{commentText}»*\n");
-        sb.AppendLine($"Ви можете переглянути його на сторінці [Деталі {site.Name}](/GlampingSites/Details/{site.Id}).");
-
-        await StreamTextInChunks(sb.ToString(), sendSse, ct);
     }
 
     private async Task StreamTextInChunks(string fullText, Func<string, object, Task> sendSse, CancellationToken ct)
