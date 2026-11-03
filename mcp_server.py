@@ -47,6 +47,29 @@ def search_glamping_sites(query: str = "", region: str = "", max_price: float = 
 
         rows = conn.execute(sql, params).fetchall()
         results = [dict(row) for row in rows]
+        if not results and (region or max_price > 0):
+            fallback_sql = """
+                SELECT g.Id, g.Name, g.Description, g.Address, g.PricePerNight, g.MaxGuests, 
+                       r.Name AS RegionName
+                FROM GlampingSites g
+                LEFT JOIN Regions r ON g.RegionId = r.Id
+            """
+            fallback_params = []
+            if region:
+                fallback_sql += " WHERE r.Name LIKE ?"
+                fallback_params.append(f"%{region}%")
+            fallback_sql += " ORDER BY g.PricePerNight ASC"
+            fallback_rows = conn.execute(fallback_sql, fallback_params).fetchall()
+            results = [dict(row) for row in fallback_rows]
+            if not results:
+                all_rows = conn.execute("""
+                    SELECT g.Id, g.Name, g.Description, g.Address, g.PricePerNight, g.MaxGuests, 
+                           r.Name AS RegionName
+                    FROM GlampingSites g
+                    LEFT JOIN Regions r ON g.RegionId = r.Id
+                    ORDER BY g.PricePerNight ASC
+                """).fetchall()
+                results = [dict(row) for row in all_rows]
         return json.dumps({"count": len(results), "glampings": results}, ensure_ascii=False, indent=2)
     finally:
         conn.close()
