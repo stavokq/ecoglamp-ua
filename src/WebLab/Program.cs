@@ -12,6 +12,7 @@ builder.Services.AddControllersWithViews()
     });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient();
 
 builder.Services.AddScoped<IFileService, FileService>();
 

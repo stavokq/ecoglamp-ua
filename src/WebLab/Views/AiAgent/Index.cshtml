@@ -1,0 +1,245 @@
+@{
+    ViewData["Title"] = "ШІ-Асистент EcoGlamp";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-9 col-xl-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h3 fw-bold text-dark mb-1">
+                    <i class="bi bi-robot text-success me-2"></i>ШІ-Асистент EcoGlamp
+                </h1>
+                <p class="text-muted small mb-0">
+                    Ваш персональний гід для ідеального відпочинку на природі в Україні
+                </p>
+            </div>
+            <a asp-controller="GlampingSites" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Каталог
+            </a>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+            <div class="card-body p-3 p-md-4" style="min-height: 460px; max-height: 600px; overflow-y: auto; background-color: #fafbfc;" id="chatMessages">
+                <div class="d-flex mb-3">
+                    <div class="me-3">
+                        <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 40px; height: 40px;">
+                            <i class="bi bi-robot fs-5"></i>
+                        </div>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="bg-white border rounded-3 p-3 shadow-sm" style="max-width: 85%;">
+                            <div class="fw-bold text-success small mb-1">EcoGlamp AI</div>
+                            <p class="mb-0 text-dark">
+                                Привіт! Я ваш персональний асистент з відпочинку в <strong>EcoGlamp UA</strong>. Можу підібрати купол чи намет у Карпатах, на Шацьких озерах або біля Києва, зорієнтувати за цінами, розповісти про зручності або зберегти ваш відгук. Чим можу допомогти?
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-footer bg-white border-top p-3">
+                <div class="d-flex flex-wrap gap-2 mb-3" id="quickPrompts">
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill prompt-pill" data-prompt="Порадь затишний глемпінг у Карпатах до 4000 грн з чаном">
+                        🌲 Карпати до 4000 грн
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill prompt-pill" data-prompt="Яка середня ціна за добу та скільки всього локацій?">
+                        📊 Статистика та ціни
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill prompt-pill" data-prompt="Розкажи деталі про Edem Mountain Domes">
+                        🏕️ Edem Mountain Domes
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-success rounded-pill prompt-pill" data-prompt="Додай відгук для Edem Mountain Domes від імені Станіслав на 5 зірок: Неймовірний відпочинок та краєвиди!">
+                        ✍️ Залишити відгук
+                    </button>
+                </div>
+
+                <form id="chatForm" class="d-flex gap-2">
+                    <input type="text" id="userInput" class="form-control rounded-pill px-3 py-2" placeholder="Запитайте щось або напишіть побажання щодо відпочинку..." autocomplete="off" required />
+                    <button type="submit" class="btn btn-success rounded-pill px-4" id="sendBtn">
+                        <i class="bi bi-send-fill me-1"></i>Надіслати
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const chatMessages = document.getElementById('chatMessages');
+    const chatForm = document.getElementById('chatForm');
+    const userInput = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const quickPrompts = document.querySelectorAll('.prompt-pill');
+
+    quickPrompts.forEach(btn => {
+        btn.addEventListener('click', () => {
+            userInput.value = btn.getAttribute('data-prompt');
+            chatForm.dispatchEvent(new Event('submit'));
+        });
+    });
+
+    chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const text = userInput.value.trim();
+        if (!text) return;
+
+        appendUserMessage(text);
+        userInput.value = '';
+        userInput.disabled = true;
+        sendBtn.disabled = true;
+
+        const aiContainer = createAiMessagePlaceholder();
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        try {
+            const response = await fetch('/api/ai/stream', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text })
+            });
+
+            if (!response.ok) {
+                throw new Error('Помилка сервера: ' + response.status);
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const parts = buffer.split('\n\n');
+                buffer = parts.pop();
+
+                for (const part of parts) {
+                    if (!part.trim()) continue;
+                    const lines = part.split('\n');
+                    let eventType = 'message';
+                    let dataStr = '';
+
+                    for (const line of lines) {
+                        if (line.startsWith('event:')) {
+                            eventType = line.substring(6).trim();
+                        } else if (line.startsWith('data:')) {
+                            dataStr = line.substring(5).trim();
+                        }
+                    }
+
+                    if (dataStr) {
+                        try {
+                            const data = JSON.parse(dataStr);
+                            handleSseEvent(eventType, data, aiContainer);
+                        } catch (err) {
+                            console.error('JSON parse error', err);
+                        }
+                    }
+                }
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        } catch (error) {
+            appendErrorMessage(aiContainer, error.message);
+        } finally {
+            userInput.disabled = false;
+            sendBtn.disabled = false;
+            userInput.focus();
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    });
+
+    function appendUserMessage(text) {
+        const div = document.createElement('div');
+        div.className = 'd-flex justify-content-end mb-3';
+        div.innerHTML = `
+            <div class="bg-success text-white rounded-3 p-3 shadow-sm" style="max-width: 80%;">
+                <div class="small text-white-50 mb-1 fw-bold text-end">Ви</div>
+                <div>${escapeHtml(text)}</div>
+            </div>
+        `;
+        chatMessages.appendChild(div);
+    }
+
+    function createAiMessagePlaceholder() {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'd-flex mb-3';
+        wrapper.innerHTML = `
+            <div class="me-3">
+                <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 40px; height: 40px;">
+                    <i class="bi bi-robot fs-5"></i>
+                </div>
+            </div>
+            <div class="flex-grow-1" style="max-width: 85%;">
+                <div class="bg-white border rounded-3 p-3 shadow-sm message-card">
+                    <div class="fw-bold text-success small mb-2 d-flex align-items-center justify-content-between">
+                        <span>EcoGlamp AI</span>
+                        <span class="badge bg-light text-secondary border live-indicator">
+                            <span class="spinner-grow spinner-grow-sm text-success me-1" role="status"></span>Друкує...
+                        </span>
+                    </div>
+                    <div class="thoughts-container mb-2"></div>
+                    <div class="toolcalls-container mb-2"></div>
+                    <div class="message-content" style="white-space: pre-wrap; line-height: 1.6;"></div>
+                </div>
+            </div>
+        `;
+        chatMessages.appendChild(wrapper);
+        return {
+            wrapper: wrapper,
+            thoughts: wrapper.querySelector('.thoughts-container'),
+            tools: wrapper.querySelector('.toolcalls-container'),
+            content: wrapper.querySelector('.message-content'),
+            indicator: wrapper.querySelector('.live-indicator')
+        };
+    }
+
+    function handleSseEvent(eventType, data, container) {
+        if (eventType === 'thought') {
+            const thoughtDiv = document.createElement('div');
+            thoughtDiv.className = 'alert alert-light border small text-muted py-1 px-2 mb-2 rounded-2';
+            thoughtDiv.innerHTML = `<i class="bi bi-lightbulb text-warning me-1"></i>${escapeHtml(data.content || '')}`;
+            container.thoughts.appendChild(thoughtDiv);
+        } else if (eventType === 'tool_call') {
+            const toolDiv = document.createElement('div');
+            toolDiv.className = 'badge bg-light text-dark border p-2 mb-2 w-100 text-start font-monospace small';
+            toolDiv.innerHTML = `<i class="bi bi-gear-fill text-success me-1"></i>Виклик інструменту: <code>${escapeHtml(data.tool)}</code>`;
+            container.tools.appendChild(toolDiv);
+        } else if (eventType === 'chunk') {
+            container.content.textContent += data.delta;
+        } else if (eventType === 'done') {
+            if (container.indicator) {
+                container.indicator.remove();
+            }
+            container.content.innerHTML = formatMarkdown(container.content.textContent);
+        }
+    }
+
+    function appendErrorMessage(container, msg) {
+        if (container.indicator) {
+            container.indicator.className = 'badge bg-danger text-white';
+            container.indicator.textContent = 'Помилка';
+        }
+        container.content.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>${escapeHtml(msg)}</span>`;
+    }
+
+    function formatMarkdown(text) {
+        let safe = escapeHtml(text);
+        safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        safe = safe.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        safe = safe.replace(/`([^`]+)`/g, '<code class="bg-light px-1 rounded text-dark">$1</code>');
+        safe = safe.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-success fw-bold text-decoration-underline">$1</a>');
+        return safe;
+    }
+
+    function escapeHtml(str) {
+        return (str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+</script>
+}

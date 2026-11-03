@@ -1,8 +1,8 @@
 {
 	"info": {
 		"_postman_id": "b3e9a112-78d4-4f81-8051-92bdfa67e810",
-		"name": "EcoGlamp UA - Web API Tests (C5, B1, QA1)",
-		"description": "Автоматизований набір тестів для REST API (C5), пагінації (B1) та автоматизованого тестування (QA1) проєкту EcoGlamp UA.",
+		"name": "EcoGlamp Tests C5, B1, QA1",
+		"description": "",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
@@ -123,7 +123,7 @@
 			}
 		},
 		{
-			"name": "03. GET Glamping Site За ID (Існуючий об'єкт)",
+			"name": "03. GET Glamping Site За ID",
 			"event": [
 				{
 					"listen": "test",
@@ -163,7 +163,7 @@
 			}
 		},
 		{
-			"name": "04. GET Glamping Site За Неіснуючим ID (404 Not Found)",
+			"name": "04. GET Glamping Site За Неіснуючим ID",
 			"event": [
 				{
 					"listen": "test",
@@ -199,7 +199,7 @@
 			}
 		},
 		{
-			"name": "05. POST Створення Глемпінгу (201 Created)",
+			"name": "05. POST Створення Глемпінгу",
 			"event": [
 				{
 					"listen": "test",
@@ -250,7 +250,7 @@
 			}
 		},
 		{
-			"name": "06. POST Створення з невалідними даними (400 Bad Request)",
+			"name": "06. POST Створення з 400 Bad Request",
 			"event": [
 				{
 					"listen": "test",
@@ -294,7 +294,7 @@
 			}
 		},
 		{
-			"name": "07. PUT Оновлення Глемпінгу (200 OK)",
+			"name": "07. PUT Оновлення Глемпінгу",
 			"event": [
 				{
 					"listen": "test",
@@ -341,7 +341,7 @@
 			}
 		},
 		{
-			"name": "08. DELETE Видалення Глемпінгу (200 OK)",
+			"name": "08. DELETE Видалення Глемпінгу",
 			"event": [
 				{
 					"listen": "test",
@@ -377,7 +377,7 @@
 			}
 		},
 		{
-			"name": "09. GET Перевірка відсутності після видалення (404 Not Found)",
+			"name": "09. GET Перевірка відсутності після видалення",
 			"event": [
 				{
 					"listen": "test",
@@ -408,7 +408,7 @@
 			}
 		},
 		{
-			"name": "10. GET Отримання списку Регіонів (200 OK)",
+			"name": "10. GET Отримання списку Регіонів",
 			"event": [
 				{
 					"listen": "test",
@@ -446,7 +446,7 @@
 			}
 		},
 		{
-			"name": "11. GET Отримання списку Активностей (200 OK)",
+			"name": "11. GET Отримання списку Активностей",
 			"event": [
 				{
 					"listen": "test",
@@ -483,7 +483,7 @@
 			}
 		},
 		{
-			"name": "12. GET Повторний запит регіонів (Перевірка кешу X-Cache: HIT)",
+			"name": "12. GET Повторний запит регіонів",
 			"event": [
 				{
 					"listen": "test",

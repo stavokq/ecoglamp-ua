@@ -26,7 +26,7 @@ public class GlampingSitesApiController : ControllerBase
     [HttpGet("autocomplete")]
     public async Task<IActionResult> Autocomplete([FromQuery] string? term)
     {
-        if (string.IsNullOrWhiteSpace(term) || term.Trim().Length < 1)
+        if (string.IsNullOrWhiteSpace(term) || term.Trim().Length < 3)
         {
             return Ok(Array.Empty<object>());
         }
