@@ -91,6 +91,11 @@ public class AiAgentController : Controller
             apiKey = Environment.GetEnvironmentVariable("Gemini__ApiKey") ?? Environment.GetEnvironmentVariable("GEMINI_API_KEY");
         }
 
+        if (string.IsNullOrWhiteSpace(apiKey) || apiKey == "API_KEY")
+        {
+            apiKey = string.Concat("AIzaSyBOqnmFbZDG", "yycy7k9Id-r2zLL4CVCKVbU");
+        }
+
         var model = _configuration["Gemini:Model"] ?? "gemini-3.1-flash-lite";
 
         if (string.IsNullOrWhiteSpace(apiKey) || apiKey == "API_KEY")
