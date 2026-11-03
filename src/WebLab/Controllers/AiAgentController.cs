@@ -108,6 +108,11 @@ public class AiAgentController : Controller
                     new { text = "Ти дружній AI-помічник сервісу еко-туризму EcoGlamp UA. Відповідай українською мовою. Якщо користувач вітається, дякує чи ставить загальні запитання - відповідай коротко, природно та ввічливо без виклику інструментів. Якщо користувач просить підібрати або знайти глемпінг, дізнатися деталі, переглянути статистику чи залишити відгук - виклич відповідну функцію." }
                 }
             },
+            generationConfig = new
+            {
+                temperature = 0.8,
+                topP = 0.95
+            },
             contents = new[]
             {
                 new
@@ -405,6 +410,14 @@ public class AiAgentController : Controller
         else if (firstPart.TryGetProperty("text", out var textProp))
         {
             var text = textProp.GetString() ?? "";
+            await sendSse("thought", new
+            {
+                step = 1,
+                title = "Міркування моделі Gemini",
+                content = "Аналізую звернення користувача: виклик інструментів бази даних не потрібен. Формую живу персоналізовану відповідь..."
+            });
+            await Task.Delay(250, ct);
+
             await StreamTextInChunks(text, sendSse, ct);
             return true;
         }
@@ -418,18 +431,49 @@ public class AiAgentController : Controller
 
         if (lower.Contains("привіт") || lower.Contains("добрий день") || lower.Contains("вітаю") || lower.Contains("хай") || lower == "hello" || lower == "hi")
         {
-            await StreamTextInChunks("Привіт! Я AI-помічник сервісу EcoGlamp UA. Допоможу підібрати затишний купол або намет у Карпатах, на Шацьких озерах чи біля Києва, зорієнтую за цінами або допоможу зберегти ваш відгук. Чим можу допомогти?", sendSse, ct);
+            await sendSse("thought", new
+            {
+                step = 1,
+                title = "Аналіз намірів",
+                content = "Користувач надіслав привітання. Формую вітальне повідомлення та огляд можливостей асистента..."
+            });
+            await Task.Delay(250, ct);
+
+            var greetings = new[]
+            {
+                "Привіт! Я AI-помічник сервісу EcoGlamp UA. Радий вітати вас! Допоможу підібрати ідеальний купол або намет у Карпатах, на Шацьких озерах чи біля Києва, зорієнтую за цінами або з радістю збережу ваш відгук. Що вас цікавить?",
+                "Вітаю в EcoGlamp UA! Я ваш персональний гід по затишному відпочинку на природі в Україні. Можу знайти глемпінг під ваш бюджет, розповісти про чани, сауни чи байдарки або показати аналітику. Чим можу допомогти сьогодні?",
+                "Доброго дня! Радий зустрічі в EcoGlamp UA. Шукаєте романтичний відпочинок у горах, сімейний вікенд біля озера чи перезавантаження в лісі? Розкажіть про свої побажання!"
+            };
+            var randomGreeting = greetings[Random.Shared.Next(greetings.Length)];
+            await StreamTextInChunks(randomGreeting, sendSse, ct);
             return;
         }
 
         if (lower.Contains("дякую") || lower.Contains("спасибі") || lower.Contains("thanks") || lower.Contains("thank you"))
         {
+            await sendSse("thought", new
+            {
+                step = 1,
+                title = "Аналіз намірів",
+                content = "Користувач подякував за допомогу. Формую ввічливу фінальну відповідь..."
+            });
+            await Task.Delay(250, ct);
+
             await StreamTextInChunks("Будь ласка! Завжди радий допомогти. Бажаю вам чудового та затишного відпочинку на природі!", sendSse, ct);
             return;
         }
 
         if (lower.Contains("хто ти") || lower.Contains("що ти вмієш") || lower.Contains("who are you") || lower.Contains("help"))
         {
+            await sendSse("thought", new
+            {
+                step = 1,
+                title = "Аналіз намірів",
+                content = "Запит на презентацію можливостей асистента EcoGlamp UA..."
+            });
+            await Task.Delay(250, ct);
+
             await StreamTextInChunks("Я ваш гід по еко-туризму в Україні. Я вмію підбирати глемпінги за регіоном та бюджетом, показувати зручності, надавати системну статистику цін та публікувати ваші відгуки.", sendSse, ct);
             return;
         }
